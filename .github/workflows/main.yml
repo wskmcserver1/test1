@@ -5,7 +5,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Run script
-        run: ls
+        run: bash ./connect.sh
         env:
           NGROK_TOKEN: ${{ secrets.NGROK_TOKEN }}
           USER_PASS: ${{ secrets.USER_PASS }}
