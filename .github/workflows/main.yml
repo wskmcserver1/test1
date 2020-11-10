@@ -5,6 +5,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Run script
-        uses: wskmcserver1/action-ssh@master
+        uses: wskmcserver1/action-ssh@main
       - name: Sleep
         run: sleep 1h
