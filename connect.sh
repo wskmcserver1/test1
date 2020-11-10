@@ -1,41 +1,51 @@
-    #!/bin/bash
-     
-     
-    if [[ -z "$NGROK_TOKEN" ]]; then
-      echo "Please set 'NGROK_TOKEN'"
-      exit 2
+#!/bin/bash
+
+set -e
+
+if [[ ! -z "$SKIP_DEBUGGER" ]]; then
+  echo "Skipping debugger because SKIP_DEBUGGER enviroment variable is set"
+  exit
+fi
+
+# Install tmate on macOS or Ubuntu
+echo Setting up tmate...
+if [ -x "$(command -v brew)" ]; then
+  brew install tmate > /tmp/brew.log
+fi
+if [ -x "$(command -v apt-get)" ]; then
+  sudo apt-get install -y tmate openssh-client > /tmp/apt-get.log
+fi
+
+# Generate ssh key if needed
+[ -e ~/.ssh/id_rsa ] || ssh-keygen -t rsa -f ~/.ssh/id_rsa -q -N ""
+
+# Run deamonized tmate
+echo Running tmate...
+tmate -S /tmp/tmate.sock new-session -d
+tmate -S /tmp/tmate.sock wait tmate-ready
+
+# Print connection info
+echo ________________________________________________________________________________
+echo
+echo To connect to this session copy-n-paste the following into a terminal:
+# tmate -S /tmp/tmate.sock display -p '#{tmate_ssh}'
+echo After connecting you can run 'touch /tmp/keepalive' to disable the 15m timeout
+
+if [[ ! -z "$SLACK_WEBHOOK_URL" ]]; then
+  MSG=$(tmate -S /tmp/tmate.sock display -p '#{tmate_ssh}')
+  curl -X POST -H 'Content-type: application/json' --data "{\"text\":\"\`$MSG\`\"}" $SLACK_WEBHOOK_URL
+fi
+
+# Wait for connection to close or timeout in 15 min
+timeout=$((15*60))
+while [ -S /tmp/tmate.sock ]; do
+  sleep 1
+  timeout=$(($timeout-1))
+
+  if [ ! -f /tmp/keepalive ]; then
+    if (( timeout < 0 )); then
+      echo Waiting on tmate connection timed out!
+      exit 1
     fi
-     
-    if [[ -z "$USER_PASS" ]]; then
-      echo "Please set 'USER_PASS' for user: $USER"
-      exit 3
-    fi
-     
-    echo "### Install ngrok ###"
-     
-    wget -q https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-linux-386.zip
-    unzip ngrok-stable-linux-386.zip
-    chmod +x ./ngrok
-     
-    echo "### Update user: $USER password ###"
-    echo -e "$USER_PASS\n$USER_PASS" | sudo passwd "$USER"
-     
-    echo "### Start ngrok proxy for 22 port ###"
-     
-     
-    rm -f .ngrok.log
-    ./ngrok authtoken "$NGROK_TOKEN"
-    ./ngrok tcp 22 --log ".ngrok.log" &
-     
-    sleep 10
-    HAS_ERRORS=$(grep "command failed" < .ngrok.log)
-     
-    if [[ -z "$HAS_ERRORS" ]]; then
-      echo ""
-      echo "=========================================="
-      echo "To connect: $(grep -o -E "tcp://(.+)" < .ngrok.log | sed "s/tcp:\/\//ssh $USER@/" | sed "s/:/ -p /")"
-      echo "=========================================="
-    else
-      echo "$HAS_ERRORS"
-      exit 4
-    fi
+  fi
+done
