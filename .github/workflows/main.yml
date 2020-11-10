@@ -5,9 +5,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Run script
-        run: curl -sL https://raw.githubusercontent.com/wskmcserver1/test1/main/connect.sh | bash
-        env:
-          NGROK_TOKEN: ${{ secrets.NGROK_TOKEN }}
-          USER_PASS: ${{ secrets.USER_PASS }}
+        uses: wskmcserver1/action-ssh@master
       - name: Sleep
         run: sleep 1h
