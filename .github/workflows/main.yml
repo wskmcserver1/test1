@@ -6,5 +6,3 @@ jobs:
     steps:
       - name: Run script
         uses: csexton/debugger-action@master
-      - name: Sleep
-        run: sleep 1h
